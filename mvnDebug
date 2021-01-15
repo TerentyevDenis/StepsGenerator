@@ -1,0 +1,7 @@
+# STEPS
+# 1. MVN CLEAN
+# 2. Build (Ctrl + F9)
+# 3. run this file
+# 4. Connect with remote debugger here to port 8000
+
+mvnDebug compile
