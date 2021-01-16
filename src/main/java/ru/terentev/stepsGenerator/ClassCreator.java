@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.StringJoiner;
 
 public class ClassCreator {
-    void generateSteps(ArrayList<PageStepsClass> pageStepsClasses, VariableElement keeper, ErrorKeeper msg, Filer filer){
+    void generateSteps(ArrayList<PageStepsClass> pageStepsClasses, VariableElement keeper, ErrorKeeper msg, Filer filer) {
         String pack = keeper.getEnclosingElement().getEnclosingElement().toString() + ".generatedSteps";
         //String pack = "debugPages.generatedSteps";
         msg.debug("package: '" + pack + "'" + " pagesKeeper: '" + keeper.getSimpleName().toString() + "'");
@@ -25,12 +25,12 @@ public class ClassCreator {
 
     }
 
-    private void generateStepClass(PageStepsClass pageStepsClass, VariableElement keeper, String pack, ErrorKeeper msg, Filer filer){
+    private void generateStepClass(PageStepsClass pageStepsClass, VariableElement keeper, String pack, ErrorKeeper msg, Filer filer) {
         String stepsClassName = pageStepsClass.getPageObject().toString() + "GeneratedSteps";
         msg.debug("generating: '" + stepsClassName + "'");
         TypeSpec.Builder stepsSpec = defaultStepsClass(stepsClassName, keeper);
         stepsSpec.addMethod(defaultPageWaiter(keeper, pageStepsClass.getPageObject().toString()).build());
-        generateMethods(stepsSpec,pageStepsClass, keeper,msg,ClassName.get(pack, stepsClassName));
+        generateMethods(stepsSpec, pageStepsClass, keeper, msg, ClassName.get(pack, stepsClassName));
         //writing class as file to generated sources
         try {
             JavaFile.builder(pack, stepsSpec.build()).build().writeTo(filer);
@@ -39,11 +39,11 @@ public class ClassCreator {
         }
     }
 
-    private void generateMethods(TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className){
-        for (Widget widget:
-             pageStepsClass.getWidgets()) {
+    private void generateMethods(TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className) {
+        for (Widget widget :
+                pageStepsClass.getWidgets()) {
             for (ExecutableElement method : widget.getMethods()) {
-                generateWidgetMethod(widget, method, stepsSpec, pageStepsClass, keeper, msg, className,null);
+                generateWidgetMethod(widget, method, stepsSpec, pageStepsClass, keeper, msg, className, null);
             }
         }
 
@@ -61,7 +61,7 @@ public class ClassCreator {
     }
 
 
-    private void generateInnerClassMethods(ArrayList<InnerClasse> innerClasses, TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className){
+    private void generateInnerClassMethods(ArrayList<InnerClasse> innerClasses, TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className) {
         if (pageStepsClass.getInnerClasses() != null) {
             for (InnerClasse innerClasse :
                     innerClasses) {
@@ -77,7 +77,7 @@ public class ClassCreator {
     }
 
 
-    private void generateWidgetMethod(Widget widget, ExecutableElement method, TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className, TypeElement subPage){
+    private void generateWidgetMethod(Widget widget, ExecutableElement method, TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className, TypeElement subPage) {
         MethodSpec.Builder stepSpec = defaultStep(method.getSimpleName(), subPage, widget.getField());
         //init one step default descriptor
 
@@ -87,8 +87,7 @@ public class ClassCreator {
         //checking widget parameters, if none found - adding last brackets to "main function call"
         if (method.getParameters().size() == 0) {
             mainCall.append("()");
-        }
-        else {
+        } else {
             appendParametersToCallAndSpec(mainCall, method, stepSpec, msg);
         }
         //checking return statement type. If something returned - adding return statement to step signature and returning "main function call"
@@ -104,7 +103,7 @@ public class ClassCreator {
 
 
     private StringBuilder collectMainCall(VariableElement pageRouter, String pageName, TypeElement subPage, VariableElement field, ExecutableElement method) {
-        if ( subPage == null) {
+        if (subPage == null) {
             return new StringBuilder("" + pageRouter.getSimpleName() + "." + swapToLower(pageName) + "()." + field + "." + method.getSimpleName());
         } else {
             StringJoiner paramName = new StringJoiner(", ");
@@ -116,10 +115,10 @@ public class ClassCreator {
     }
 
 
-
     private MethodSpec.Builder defaultStep(Name methodName, TypeElement subPage, VariableElement field) {
         String action;
-        if (subPage != null) action = methodName.toString() + "_" + swapToLower(subPage.getSimpleName().toString()) + "_" + field.toString();
+        if (subPage != null)
+            action = methodName.toString() + "_" + swapToLower(subPage.getSimpleName().toString()) + "_" + field.toString();
         else action = methodName.toString() + "_" + field.getSimpleName().toString();
 
         MethodSpec.Builder builder = MethodSpec.methodBuilder(action)
@@ -127,7 +126,7 @@ public class ClassCreator {
                 .addStatement("logger.info(\"$L '$L' $L\")", "Auto-generated keyword", action, "started")
                 .addAnnotation(AnnotationSpec.builder(Step.class).addMember("value", "\"" + action + "\"").build());
 
-        if (subPage!=null && subPage.getEnclosedElements()!=null) {
+        if (subPage != null && subPage.getEnclosedElements() != null) {
             List<ExecutableElement> constructors = ElementFilter.constructorsIn(subPage.getEnclosedElements());
             for (VariableElement param : constructors.get(0).getParameters()) {
                 ParameterSpec p = ParameterSpec.builder(ParameterizedTypeName.get(param.asType()), param.getSimpleName().toString()).build();

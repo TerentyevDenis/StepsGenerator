@@ -10,18 +10,18 @@ public class PageStepsClass {
     private ArrayList<Widget> widgets;
     private ArrayList<InnerClasse> InnerClasses;
 
-    public PageStepsClass( Name pageObject, TemplateClass templatePage, ArrayList<Widget> widgets, ArrayList<InnerClasse> innerClasses) {
+    public PageStepsClass(Name pageObject, TemplateClass templatePage, ArrayList<Widget> widgets, ArrayList<InnerClasse> innerClasses) {
         PageObject = pageObject;
         TemplatePage = templatePage;
         this.widgets = widgets;
         InnerClasses = innerClasses;
     }
 
-    public  Name   getPageObject() {
+    public Name getPageObject() {
         return PageObject;
     }
 
-    public void setPageObject( Name   pageObject) {
+    public void setPageObject(Name pageObject) {
         PageObject = pageObject;
     }
 
