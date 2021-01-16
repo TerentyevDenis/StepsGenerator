@@ -2,6 +2,7 @@ package ru.terentev.stepsGenerator;
 
 import com.squareup.javapoet.*;
 import io.qameta.allure.Step;
+import ru.terentev.stepsGenerator.Annotations.GeneratedSteps;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.*;
@@ -16,19 +17,20 @@ public class ClassCreator {
         String pack = keeper.getEnclosingElement().getEnclosingElement().toString() + ".generatedSteps";
         //String pack = "debugPages.generatedSteps";
         msg.debug("package: '" + pack + "'" + " pagesKeeper: '" + keeper.getSimpleName().toString() + "'");
-        for (PageStepsClass pageStepsClass:
+
+        for (PageStepsClass pageStepsClass :
                 pageStepsClasses) {
             generateStepClass(pageStepsClass, keeper, pack, msg, filer);
         }
+
     }
 
     private void generateStepClass(PageStepsClass pageStepsClass, VariableElement keeper, String pack, ErrorKeeper msg, Filer filer){
         String stepsClassName = pageStepsClass.getPageObject().toString() + "GeneratedSteps";
         msg.debug("generating: '" + stepsClassName + "'");
         TypeSpec.Builder stepsSpec = defaultStepsClass(stepsClassName, keeper);
-        stepsSpec.addMethod(ClassCreator.defaultPageWaiter(keeper, pageStepsClass.getPageObject().toString()).build());
+        stepsSpec.addMethod(defaultPageWaiter(keeper, pageStepsClass.getPageObject().toString()).build());
         generateMethods(stepsSpec,pageStepsClass, keeper,msg,ClassName.get(pack, stepsClassName));
-
         //writing class as file to generated sources
         try {
             JavaFile.builder(pack, stepsSpec.build()).build().writeTo(filer);
@@ -43,28 +45,31 @@ public class ClassCreator {
             for (ExecutableElement method : widget.getMethods()) {
                 generateWidgetMethod(widget, method, stepsSpec, pageStepsClass, keeper, msg, className,null);
             }
-
         }
 
-        for (Widget widget:
-                pageStepsClass.getTemplatePage().getWidgets()) {
-            for (ExecutableElement method : widget.getMethods()) {
-                generateWidgetMethod(widget, method, stepsSpec, pageStepsClass, keeper, msg, className,null);
+        if (pageStepsClass.getTemplatePage() != null) {
+            for (Widget widget :
+                    pageStepsClass.getTemplatePage().getWidgets()) {
+                for (ExecutableElement method : widget.getMethods()) {
+                    generateWidgetMethod(widget, method, stepsSpec, pageStepsClass, keeper, msg, className, null);
+                }
             }
-
+            generateInnerClassMethods(pageStepsClass.getTemplatePage().getInnerClasses(), stepsSpec, pageStepsClass, keeper, msg, className);
         }
-        generateInnerClassMethods(pageStepsClass.getInnerClasses(),stepsSpec, pageStepsClass, keeper, msg, className);
-        generateInnerClassMethods(pageStepsClass.getTemplatePage().getInnerClasses(),stepsSpec, pageStepsClass, keeper, msg, className);
+        generateInnerClassMethods(pageStepsClass.getInnerClasses(), stepsSpec, pageStepsClass, keeper, msg, className);
+
     }
 
 
     private void generateInnerClassMethods(ArrayList<InnerClasse> innerClasses, TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className){
-        for (InnerClasse innerClasse:
-                innerClasses) {
-            for (Widget widget :
-                    innerClasse.getWidgets()) {
-                for (ExecutableElement method : widget.getMethods()) {
-                    generateWidgetMethod(widget, method, stepsSpec, pageStepsClass, keeper, msg, className,innerClasse.getInnerClass());
+        if (pageStepsClass.getInnerClasses() != null) {
+            for (InnerClasse innerClasse :
+                    innerClasses) {
+                for (Widget widget :
+                        innerClasse.getWidgets()) {
+                    for (ExecutableElement method : widget.getMethods()) {
+                        generateWidgetMethod(widget, method, stepsSpec, pageStepsClass, keeper, msg, className, innerClasse.getInnerClass());
+                    }
                 }
             }
         }
@@ -73,31 +78,32 @@ public class ClassCreator {
 
 
     private void generateWidgetMethod(Widget widget, ExecutableElement method, TypeSpec.Builder stepsSpec, PageStepsClass pageStepsClass, VariableElement keeper, ErrorKeeper msg, ClassName className, TypeElement subPage){
-        MethodSpec.Builder stepSpec = ClassCreator.defaultStep(method.getSimpleName(), subPage, widget.getField());
+        MethodSpec.Builder stepSpec = defaultStep(method.getSimpleName(), subPage, widget.getField());
         //init one step default descriptor
 
         //collecting method "main function call" like "baseRouter.authorizationPage().login.fill" !without last brackets!
-        StringBuilder mainCall = ClassCreator.collectMainCall(keeper, pageStepsClass.getPageObject().toString(), subPage, widget.getField(), method);
+        StringBuilder mainCall = collectMainCall(keeper, pageStepsClass.getPageObject().toString(), subPage, widget.getField(), method);
 
         //checking widget parameters, if none found - adding last brackets to "main function call"
-        if (method.getParameters().size() == 0)
+        if (method.getParameters().size() == 0) {
             mainCall.append("()");
-        else
-            ClassCreator.appendParametersToCallAndSpec(mainCall, method, stepSpec, msg);
-
+        }
+        else {
+            appendParametersToCallAndSpec(mainCall, method, stepSpec, msg);
+        }
         //checking return statement type. If something returned - adding return statement to step signature and returning "main function call"
         if (method.getReturnType().toString().equals(keeper.asType().toString()))
-            ClassCreator.addMainCallWithReturnThis(stepSpec, mainCall, className);
+            addMainCallWithReturnThis(stepSpec, mainCall, className);
         else if (!method.getReturnType().toString().equals("void"))
-            ClassCreator.addMainCallWithReturn(stepSpec, method, mainCall);
+            addMainCallWithReturn(stepSpec, method, mainCall);
         else
-            ClassCreator.addMainCallWithoutReturn(stepSpec, mainCall);
+            addMainCallWithoutReturn(stepSpec, mainCall);
         //adding method to class descriptor
         stepsSpec.addMethod(stepSpec.build());
     }
 
 
-    static StringBuilder collectMainCall(VariableElement pageRouter, String pageName, TypeElement subPage, VariableElement field, ExecutableElement method) {
+    private StringBuilder collectMainCall(VariableElement pageRouter, String pageName, TypeElement subPage, VariableElement field, ExecutableElement method) {
         if ( subPage == null) {
             return new StringBuilder("" + pageRouter.getSimpleName() + "." + swapToLower(pageName) + "()." + field + "." + method.getSimpleName());
         } else {
@@ -111,7 +117,7 @@ public class ClassCreator {
 
 
 
-    static MethodSpec.Builder defaultStep(Name methodName, TypeElement subPage, VariableElement field) {
+    private MethodSpec.Builder defaultStep(Name methodName, TypeElement subPage, VariableElement field) {
         String action;
         if (subPage != null) action = methodName.toString() + "_" + swapToLower(subPage.getSimpleName().toString()) + "_" + field.toString();
         else action = methodName.toString() + "_" + field.getSimpleName().toString();
@@ -133,11 +139,13 @@ public class ClassCreator {
 
     }
 
-    static TypeSpec.Builder defaultStepsClass(String stepsClassName, VariableElement finalKeeper) {
+    private TypeSpec.Builder defaultStepsClass(String stepsClassName, VariableElement finalKeeper) {
         TypeSpec.Builder stepsSpec = TypeSpec
                 .classBuilder(stepsClassName) //something like <class AuthorizationPageGeneratedSteps>
                 .superclass(ClassName.get(finalKeeper.getEnclosingElement().asType())) // extends <class containing keeper>
-                .addModifiers(Modifier.PUBLIC);
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(GeneratedSteps.class);
+
         // adding "logger" field, ClassName "loggerClass" is needed for import
         ClassName loggerClass = ClassName.get("org.apache.log4j", "Logger");
         FieldSpec logger = FieldSpec.builder(loggerClass, "logger")
@@ -148,7 +156,7 @@ public class ClassCreator {
         return stepsSpec;
     }
 
-    static void appendParametersToCallAndSpec(StringBuilder mainCall, ExecutableElement method, MethodSpec.Builder stepSpec, ErrorKeeper msg) {
+    private void appendParametersToCallAndSpec(StringBuilder mainCall, ExecutableElement method, MethodSpec.Builder stepSpec, ErrorKeeper msg) {
         //collecting parameters
         mainCall.append("(");
         String delimiter = "";
@@ -169,7 +177,7 @@ public class ClassCreator {
         mainCall.append(")");
     }
 
-    static MethodSpec.Builder defaultPageWaiter(VariableElement pageRouter, String pageName) {
+    private MethodSpec.Builder defaultPageWaiter(VariableElement pageRouter, String pageName) {
         return MethodSpec.methodBuilder("wait_page")
                 .addModifiers(Modifier.PUBLIC)
                 .addStatement("logger.info(\"$L\")", "Waiting " + pageName)
@@ -183,18 +191,18 @@ public class ClassCreator {
         return new String(c);
     }
 
-    static void addMainCallWithReturnThis(MethodSpec.Builder stepSpec, StringBuilder mainCall, ClassName classType) {
+    private void addMainCallWithReturnThis(MethodSpec.Builder stepSpec, StringBuilder mainCall, ClassName classType) {
         stepSpec.returns(classType);
         stepSpec.addStatement("$L", mainCall.toString());
         stepSpec.addStatement("return this");
     }
 
-    static void addMainCallWithReturn(MethodSpec.Builder stepSpec, ExecutableElement method, StringBuilder mainCall) {
+    private void addMainCallWithReturn(MethodSpec.Builder stepSpec, ExecutableElement method, StringBuilder mainCall) {
         stepSpec.returns(ParameterizedTypeName.get(method.getReturnType()));
         stepSpec.addStatement("return $L", mainCall.toString());
     }
 
-    static void addMainCallWithoutReturn(MethodSpec.Builder stepSpec, StringBuilder mainCall) {
+    private void addMainCallWithoutReturn(MethodSpec.Builder stepSpec, StringBuilder mainCall) {
         stepSpec.addStatement("$L", mainCall.toString());
     }
 }

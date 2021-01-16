@@ -20,17 +20,16 @@ public class MyAnnotationProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        try {
-            ErrorKeeper msg = new ErrorKeeper(processingEnv.getMessager());
-            widgets = collectWidgetsClasses(roundEnv, msg);
-            if (widgets.isEmpty()) msg.setDone("No Widgets found! Can't generate, bye-bye");
-            templateClasses = collectTemplateClasses(roundEnv, msg);
-            pageStepsClasses = collectPageStepsClasses(roundEnv, msg);
-            VariableElement keeper = checkKeeper(roundEnv, msg);
-            new ClassCreator().generateSteps(pageStepsClasses, keeper, msg, processingEnv.getFiler());
-        }catch (Exception e){
-            e.printStackTrace();
-        }
+        ErrorKeeper msg = new ErrorKeeper(processingEnv.getMessager());
+        widgets = collectWidgetsClasses(roundEnv, msg);
+        if (widgets.isEmpty()) msg.setDone("No Widgets found! Can't generate, bye-bye");
+        templateClasses = collectTemplateClasses(roundEnv, msg);
+        pageStepsClasses = collectPageStepsClasses(roundEnv, msg);
+        if (pageStepsClasses.isEmpty()) msg.setDone("No PageObjects found! Can't generate, bye-bye");
+            else msg.debug("pages: " + pageStepsClasses.size());
+        VariableElement keeper = checkKeeper(roundEnv, msg);
+        if (msg.isProcessEnded()) return msg.state();
+        new ClassCreator().generateSteps(pageStepsClasses, keeper, msg, processingEnv.getFiler());
         return true;
     }
 
@@ -108,7 +107,7 @@ public class MyAnnotationProcessor extends AbstractProcessor {
 
     private TemplateClass collectPageTemplate(Element page, ErrorKeeper msg){
         String annotationString = page.getAnnotation(PageObject.class).toString();
-        if (annotationString.equals("@ru.terentev.stepsGenerator.Annotations.PageObject(baseClass=ru.terentev.stepsGenerator.Annotations.PageObject)")) {
+        if (!annotationString.equals("@ru.terentev.stepsGenerator.Annotations.PageObject(baseClass=ru.terentev.stepsGenerator.Annotations.PageObject)")) {
             msg.debug("Catch annotation with custom class : " + annotationString);
             String className = annotationString.substring(annotationString.lastIndexOf(".") + 1).replace(")", "");
             msg.debug("Class to append : '" + className + "'");
