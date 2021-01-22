@@ -15,7 +15,6 @@ import java.util.StringJoiner;
 public class ClassCreator {
     void generateSteps(ArrayList<PageStepsClass> pageStepsClasses, VariableElement keeper, ErrorKeeper msg, Filer filer) {
         String pack = keeper.getEnclosingElement().getEnclosingElement().toString() + ".generatedSteps";
-        //String pack = "debugPages.generatedSteps";
         msg.debug("package: '" + pack + "'" + " pagesKeeper: '" + keeper.getSimpleName().toString() + "'");
 
         for (PageStepsClass pageStepsClass :

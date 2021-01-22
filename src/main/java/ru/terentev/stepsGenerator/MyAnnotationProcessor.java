@@ -11,7 +11,7 @@ import javax.lang.model.util.ElementFilter;
 import java.util.*;
 
 @SupportedAnnotationTypes(value = {"ru.terentev.stepsGenerator.Annotations.*"})
-@SupportedSourceVersion(SourceVersion.RELEASE_8)
+@SupportedSourceVersion(SourceVersion.RELEASE_11)
 @AutoService(Processor.class)
 public class MyAnnotationProcessor extends AbstractProcessor {
 
